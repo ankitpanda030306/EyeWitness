@@ -3,6 +3,7 @@ package com.example.eye_witness_aidectection.service;
 import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtSession;
+import com.example.eye_witness_aidectection.config.OnnxConfig;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,18 +36,10 @@ import com.drew.metadata.exif.ExifSubIFDDirectory;
 @Service
 public class InferenceService {
 
-    private OrtEnvironment env;
-    private OrtSession session;
+    private final OnnxConfig onnxConfig;
 
-    @PostConstruct
-    public void init() throws Exception {
-        this.env = OrtEnvironment.getEnvironment();
-        InputStream modelStream = getClass().getResourceAsStream("/models/eyewitness_v2.onnx");
-        if (modelStream == null) {
-            throw new IllegalStateException("eyewitness_v2.onnx not found in /resources/models/");
-        }
-        byte[] modelBytes = modelStream.readAllBytes();
-        this.session = env.createSession(modelBytes, new OrtSession.SessionOptions());
+    public InferenceService(OnnxConfig onnxConfig) {
+        this.onnxConfig = onnxConfig;
     }
 
     public Map<String, Object> analyzeImage(MultipartFile file) {
@@ -355,8 +348,8 @@ public class InferenceService {
         }
         buffer.rewind();
 
-        OnnxTensor inputTensor = OnnxTensor.createTensor(env, buffer, new long[]{1, 3, 224, 224});
-        OrtSession.Result runResult = session.run(Collections.singletonMap("pixel_values", inputTensor));
+        OnnxTensor inputTensor = OnnxTensor.createTensor(onnxConfig.getEnv(), buffer, new long[]{1, 3, 224, 224});
+        OrtSession.Result runResult = onnxConfig.getSession().run(Collections.singletonMap("pixel_values", inputTensor));
 
         float[][] logits = (float[][]) runResult.get(0).getValue();
         
