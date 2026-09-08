@@ -3,14 +3,14 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn clean package -DskipTests && \
+    cp target/*-SNAPSHOT.jar target/app.jar 2>/dev/null || cp target/*.jar target/app.jar
 
-# Stage 2: Lightweight runtime with memory tuning
+# Stage 2: Lightweight runtime
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-COPY --from=build /app/target/eye_witness_aidectection-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/app.jar app.jar
 
 EXPOSE 8080
 
-# Run with serial GC and strict heap allocation to fit 512MB RAM
 ENTRYPOINT ["java", "-Xms128m", "-Xmx256m", "-XX:+UseSerialGC", "-jar", "app.jar"]
