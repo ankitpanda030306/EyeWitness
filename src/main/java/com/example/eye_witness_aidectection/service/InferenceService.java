@@ -3,7 +3,7 @@ package com.example.eye_witness_aidectection.service;
 import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtSession;
-import com.example.eye_witness_aidectection.config.OnnxConfig;
+import ai.onnxruntime.OrtSession;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,10 +36,12 @@ import com.drew.metadata.exif.ExifSubIFDDirectory;
 @Service
 public class InferenceService {
 
-    private final OnnxConfig onnxConfig;
+    private final OrtEnvironment env;
+    private final OrtSession session;
 
-    public InferenceService(OnnxConfig onnxConfig) {
-        this.onnxConfig = onnxConfig;
+    public InferenceService(OrtEnvironment env, OrtSession session) {
+        this.env = env;
+        this.session = session;
     }
 
     public Map<String, Object> analyzeImage(MultipartFile file) {
@@ -348,8 +350,8 @@ public class InferenceService {
         }
         buffer.rewind();
 
-        OnnxTensor inputTensor = OnnxTensor.createTensor(onnxConfig.getEnv(), buffer, new long[]{1, 3, 224, 224});
-        OrtSession.Result runResult = onnxConfig.getSession().run(Collections.singletonMap("pixel_values", inputTensor));
+        OnnxTensor inputTensor = OnnxTensor.createTensor(env, buffer, new long[]{1, 3, 224, 224});
+        OrtSession.Result runResult = session.run(Collections.singletonMap("pixel_values", inputTensor));
 
         float[][] logits = (float[][]) runResult.get(0).getValue();
         

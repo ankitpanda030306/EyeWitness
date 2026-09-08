@@ -1,10 +1,8 @@
 package com.example.eye_witness_aidectection.config;
 
 import ai.onnxruntime.*;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.File;
@@ -19,7 +17,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
 @Configuration
-@Getter
 public class OnnxConfig {
     @Value("${model.cache.dir}")
     private String cacheDir;
@@ -30,39 +27,36 @@ public class OnnxConfig {
     @Value("${model.v2.filename}")
     private String v2Filename;
 
-    private OrtEnvironment env;
-    private OrtSession session;
+    @Bean
+    public OrtEnvironment ortEnvironment() {
+        return OrtEnvironment.getEnvironment();
+    }
 
-    @PostConstruct
-    public void init() {
+    @Bean(destroyMethod = "close")
+    public OrtSession ortSession(OrtEnvironment env) throws Exception {
         System.out.println("[EyeWitness AI] Checking local models...");
-        try {
-            Path dirPath = Paths.get(cacheDir);
-            if (!Files.exists(dirPath)) {
-                Files.createDirectories(dirPath);
-            }
+        Path dirPath = Paths.get(cacheDir);
+        if (!Files.exists(dirPath)) {
+            Files.createDirectories(dirPath);
+        }
 
-            File modelV2File = new File(cacheDir, v2Filename);
-            if (!modelV2File.exists() || modelV2File.length() == 0) {
-                downloadModel(v2Url, v2Filename, modelV2File);
-            } else {
-                System.out.println("[EyeWitness AI] Model " + v2Filename + " successfully verified/cached.");
-            }
+        File modelV2File = new File(cacheDir, v2Filename);
+        if (!modelV2File.exists() || modelV2File.length() == 0) {
+            downloadModel(v2Url, v2Filename, modelV2File);
+        } else {
+            System.out.println("[EyeWitness AI] Model " + v2Filename + " successfully verified/cached.");
+        }
 
-            env = OrtEnvironment.getEnvironment();
-            OrtSession.SessionOptions sessionOptions = new OrtSession.SessionOptions();
-            sessionOptions.setMemoryPatternOptimization(true);
-            sessionOptions.setExecutionMode(OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL);
-            sessionOptions.setIntraOpNumThreads(1);
-            sessionOptions.setInterOpNumThreads(1);
+        OrtSession.SessionOptions sessionOptions = new OrtSession.SessionOptions();
+        sessionOptions.setMemoryPatternOptimization(true);
+        sessionOptions.setExecutionMode(OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL);
+        sessionOptions.setIntraOpNumThreads(1);
+        sessionOptions.setInterOpNumThreads(1);
 
-            // Initialize OrtSession using the cached file paths
-            if (modelV2File.exists() && modelV2File.length() > 0) {
-                session = env.createSession(modelV2File.getAbsolutePath(), sessionOptions);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (modelV2File.exists() && modelV2File.length() > 0) {
+            return env.createSession(modelV2File.getAbsolutePath(), sessionOptions);
+        } else {
+            throw new IllegalStateException("Failed to initialize ONNX session. Model file is missing or empty.");
         }
     }
 
@@ -83,15 +77,7 @@ public class OnnxConfig {
                 System.out.println("[EyeWitness AI] Model " + filename + " successfully verified/cached.");
             }
         } else {
-            System.err.println("Failed to download model " + filename + ". HTTP Status: " + response.statusCode());
+            throw new RuntimeException("Failed to download model " + filename + ". HTTP Status: " + response.statusCode());
         }
-    }
-
-    @PreDestroy
-    public void close() {
-        try {
-            if (session != null) session.close();
-            if (env != null) env.close();
-        } catch (Exception ignored) {}
     }
 }
