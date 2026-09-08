@@ -65,12 +65,18 @@ public class OnnxConfig {
             }
 
             env = OrtEnvironment.getEnvironment();
+            OrtSession.SessionOptions sessionOptions = new OrtSession.SessionOptions();
+            sessionOptions.setMemoryPatternOptimization(true);
+            sessionOptions.setExecutionMode(OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL);
+            sessionOptions.setIntraOpNumThreads(1);
+            sessionOptions.setInterOpNumThreads(1);
+
             // Initialize OrtSession using the cached file paths
             if (modelV1File.exists() && modelV1File.length() > 0) {
-                session = env.createSession(modelV1File.getAbsolutePath(), new OrtSession.SessionOptions());
+                session = env.createSession(modelV1File.getAbsolutePath(), sessionOptions);
             }
             if (modelV2File.exists() && modelV2File.length() > 0) {
-                sessionV2 = env.createSession(modelV2File.getAbsolutePath(), new OrtSession.SessionOptions());
+                sessionV2 = env.createSession(modelV2File.getAbsolutePath(), sessionOptions);
             }
 
         } catch (Exception e) {
