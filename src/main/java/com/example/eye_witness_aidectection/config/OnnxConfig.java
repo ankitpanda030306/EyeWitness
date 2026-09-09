@@ -69,23 +69,29 @@ public class OnnxConfig {
     }
 
     private void downloadModel(String url, String filename, File targetFile) throws Exception {
-        System.out.println("[EyeWitness AI] Downloading " + filename + " from Hugging Face...");
-        HttpClient client = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.ALWAYS)
-                .build();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .GET()
-                .build();
-
-        HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-        if (response.statusCode() == 200) {
-            try (InputStream in = response.body()) {
-                Files.copy(in, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                System.out.println("[EyeWitness AI] Model " + filename + " successfully downloaded and cached.");
-            }
-        } else {
-            throw new RuntimeException("Failed to download model " + filename + ". HTTP Status: " + response.statusCode());
-        }
+    System.out.println("[EyeWitness AI] Downloading " + filename + " from Hugging Face...");
+    
+    // Ensure parent directories exist before writing
+    if (targetFile.getParentFile() != null) {
+        Files.createDirectories(targetFile.getParentFile().toPath());
     }
+
+    HttpClient client = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.ALWAYS)
+            .build();
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .build();
+
+    HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+    if (response.statusCode() == 200) {
+        try (InputStream in = response.body()) {
+            Files.copy(in, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("[EyeWitness AI] Model " + filename + " successfully downloaded and cached.");
+        }
+    } else {
+        throw new RuntimeException("Failed to download model " + filename + ". HTTP Status: " + response.statusCode());
+    }
+}
 }
